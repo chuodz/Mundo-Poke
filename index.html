@@ -1,668 +1,431 @@
-```html
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Jerimbia Idle - Pokémon 2D Retro</title>
-    <!-- Tailwind CSS for smooth layout grid -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Retro Pixel Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PokéTibia Idle MMORPG</title>
     <style>
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-        body {
-            background-color: #0b0f19;
-            color: #f8fafc;
-            font-family: 'VT323', monospace;
-            overflow-x: hidden;
-            touch-action: manipulation;
-        }
-        .pixel-font {
-            font-family: 'Press Start 2P', cursive;
-        }
-        /* Retro Game Boy / Arcade Frame Styling */
-        .retro-border {
-            border: 4px solid #3b4252;
-            box-shadow: inset -4px -4px 0px 0px #1e222a, inset 4px 4px 0px 0px #4c566a, 0 8px 20px rgba(0,0,0,0.6);
-            background: #2e3440;
-        }
-        .retro-box {
-            background: #eceff4;
-            color: #2e3440;
-            border: 4px solid #4c566a;
-            box-shadow: inset -3px -3px 0px #d8dee9, inset 3px 3px 0px #fff;
-            border-radius: 4px;
-        }
-        .retro-btn {
-            background: #5e81ac;
-            color: #eceff4;
-            border: 3px solid #2e3440;
-            box-shadow: inset -3px -3px 0px #4c566a, inset 3px 3px 0px #81a1c1;
-            transition: all 0.1s ease;
-        }
-        .retro-btn:active:not(:disabled) {
-            transform: translate(2px, 2px);
-            box-shadow: inset -1px -1px 0px #4c566a, inset 1px 1px 0px #81a1c1;
-        }
-        .retro-btn:disabled {
-            background: #4c566a;
-            color: #d8dee9;
-            opacity: 0.6;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: #0c0f12; color: #fff; }
         
-        /* Floating Damage Animation */
-        @keyframes floatDamage {
-            0% { opacity: 1; transform: translateY(0) scale(1); }
-            50% { transform: translateY(-25px) scale(1.3); }
-            100% { opacity: 0; transform: translateY(-45px) scale(0.8); }
-        }
-        .damage-popup {
-            position: absolute;
-            animation: floatDamage 0.8s ease-out forwards;
-            font-family: 'Press Start 2P', cursive;
-            text-shadow: 2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000;
-            pointer-events: none;
-            z-index: 50;
-        }
+        /* Contenedor del Juego */
+        #game-wrapper { position: relative; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        canvas { display: block; background: #2d5a27; }
 
-        /* Sprite Attack & Flash Animations */
-        @keyframes attackRight {
-            0% { transform: translateX(0); }
-            30% { transform: translateX(25px) scale(1.05); }
-            100% { transform: translateX(0); }
+        /* UI SUPERIOR - BARRA DE HERRAMIENTAS */
+        .top-bar {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(18, 22, 28, 0.9); border: 1px solid #3a4756; border-radius: 8px;
+            display: flex; gap: 8px; padding: 6px 12px; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            z-index: 10;
         }
-        @keyframes hurtFlash {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(3) sepia(1) hue-rotate(-50deg) saturate(5); }
-        }
-        @keyframes idleFloat {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
-        .animate-attack { animation: attackRight 0.25s ease-in-out; }
-        .animate-hurt { animation: hurtFlash 0.3s ease-in-out; }
-        .animate-idle { animation: idleFloat 2.5s ease-in-out infinite; }
+        .icon-btn { width: 32px; height: 32px; background: #252e3d; border: 1px solid #48586e; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-size: 16px; cursor: pointer; }
+        .icon-btn:hover { background: #3b495e; }
+        .auto-btn { background: #1e3a5f; color: #60a5fa; border: 1px solid #3b82f6; font-size: 12px; font-weight: bold; padding: 4px 10px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .auto-btn.active { background: #166534; color: #4ade80; border-color: #22c55e; }
 
-        /* Custom Scrollbar for Retro feel */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #2e3440; }
-        ::-webkit-scrollbar-thumb { background: #88c0d0; border-radius: 2px; }
+        /* PANEL IZQUIERDO - EQUIPO POKÉMON */
+        .left-panel {
+            position: absolute; top: 10px; left: 10px; width: 220px;
+            background: rgba(15, 20, 25, 0.92); border: 1px solid #2d3748; border-radius: 8px; padding: 10px;
+            display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 10;
+        }
+        .player-info { border-bottom: 1px solid #2d3748; padding-bottom: 6px; margin-bottom: 4px; }
+        .player-name { font-size: 14px; font-weight: bold; color: #e2e8f0; }
+        .player-sub { font-size: 11px; color: #a0aec0; }
+
+        .poke-card { background: #1a202c; border: 1px solid #2d3748; border-radius: 6px; padding: 6px; display: flex; gap: 8px; align-items: center; }
+        .poke-avatar { width: 36px; height: 36px; background: #2d3748; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; border: 1px solid #4a5568; }
+        .poke-details { flex: 1; }
+        .poke-header { display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; margin-bottom: 3px; }
+        .bar-bg { width: 100%; height: 6px; background: #1a202c; border-radius: 3px; overflow: hidden; margin-bottom: 3px; border: 1px solid #2d3748; }
+        .bar-fill-hp { height: 100%; background: #22c55e; width: 100%; transition: width 0.2s; }
+        .bar-fill-exp { height: 100%; background: #3b82f6; width: 0%; transition: width 0.2s; }
+
+        /* PANEL DERECHO INFERIOR - CAPTURA */
+        .right-panel {
+            position: absolute; bottom: 10px; right: 10px; width: 220px;
+            background: rgba(15, 20, 25, 0.92); border: 1px solid #2d3748; border-radius: 8px; padding: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 10;
+        }
+        .panel-title { font-size: 12px; font-weight: bold; color: #f6ad55; margin-bottom: 8px; display: flex; justify-content: space-between; }
+        .capture-item { display: flex; justify-content: space-between; align-items: center; background: #1a202c; padding: 6px; border-radius: 4px; margin-bottom: 4px; font-size: 12px; }
+        .btn-action { background: #3182ce; border: none; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold; }
+        .btn-action:hover { background: #2b6cb0; }
+
+        /* CONTROLES MÓVILES (D-PAD) */
+        .dpad { position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px; z-index: 10; display: none; }
+        .dpad-btn { position: absolute; width: 40px; height: 40px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 18px; color: white; }
+        .dpad-up { top: 0; left: 40px; }
+        .dpad-down { bottom: 0; left: 40px; }
+        .dpad-left { top: 40px; left: 0; }
+        .dpad-right { top: 40px; right: 0; }
+
+        @media (max-width: 768px) {
+            .dpad { display: block; }
+            .left-panel { width: 170px; font-size: 10px; }
+            .right-panel { width: 170px; }
+        }
     </style>
 </head>
-<body class="flex flex-col items-center justify-start min-h-screen p-2 sm:p-4">
+<body>
 
-    <!-- Container Frame Style GameBoy Advance / Retro Console -->
-    <div class="w-full max-w-2xl min-h-[92vh] flex flex-col justify-between p-3 sm:p-5 rounded-2xl retro-border relative">
-        
-        <!-- HEADER HUD -->
-        <header class="mb-3">
-            <div class="flex justify-between items-center mb-2">
-                <h1 class="pixel-font text-yellow-400 text-xs sm:text-base tracking-wider drop-shadow-[0_2px_0_#000]">
-                    ⚡ JERIMBIA IDLE
-                </h1>
-                <div class="flex items-center gap-2">
-                    <button id="soundToggle" onclick="toggleAudio()" class="retro-btn px-2 py-1 text-xs pixel-font">🔊 SOUND</button>
-                    <span id="saveStatus" class="text-xs text-green-400 font-mono">AUTOSAVED</span>
+    <div id="game-wrapper">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Barra Superior estilo MMORPG -->
+        <div class="top-bar">
+            <div class="icon-btn" title="Mochila">🎒</div>
+            <div class="icon-btn" title="Mapas">🗺️</div>
+            <div class="icon-btn" title="Pokéballs">⚽</div>
+            <div class="icon-btn" title="Tienda">🏬</div>
+            <button class="auto-btn active" id="autoBtn" onclick="toggleAuto()">⚙️ Auto-Helper: ON</button>
+        </div>
+
+        <!-- Panel Izquierdo: Datos del Jugador y Equipo Pokémon -->
+        <div class="left-panel">
+            <div class="player-info">
+                <div class="player-name">Chuo02</div>
+                <div class="player-sub">Nivel 85 • Entrenador</div>
+            </div>
+            
+            <div class="poke-card">
+                <div class="poke-avatar">🪨</div>
+                <div class="poke-details">
+                    <div class="poke-header"><span>GRAVELER</span> <span>Nv. 81</span></div>
+                    <div class="bar-bg"><div class="bar-fill-hp" id="hp-graveler" style="width: 100%;"></div></div>
+                    <div class="bar-bg"><div class="bar-fill-exp" id="exp-graveler" style="width: 45%;"></div></div>
                 </div>
             </div>
 
-            <!-- Top Stats Bar -->
-            <div class="grid grid-cols-3 gap-2 bg-slate-900/90 p-2 sm:p-3 rounded border-2 border-slate-600 text-center">
-                <div class="flex flex-col">
-                    <span class="text-gray-400 text-xs sm:text-sm">POKÉ-DÓLARES</span>
-                    <span class="text-yellow-400 font-bold text-lg sm:text-2xl" id="gold">¥0</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-gray-400 text-xs sm:text-sm">DAÑO (DPS)</span>
-                    <span class="text-red-400 font-bold text-lg sm:text-2xl" id="dps">0</span>
-                </div>
-                <div class="flex flex-col">
-                    <span class="text-gray-400 text-xs sm:text-sm">ETAPA / RUTA</span>
-                    <span class="text-cyan-400 font-bold text-lg sm:text-2xl" id="stage">1</span>
+            <div class="poke-card">
+                <div class="poke-avatar">🔥</div>
+                <div class="poke-details">
+                    <div class="poke-header"><span>CHARMANDER</span> <span>Nv. 11</span></div>
+                    <div class="bar-bg"><div class="bar-fill-hp" style="width: 100%;"></div></div>
+                    <div class="bar-bg"><div class="bar-fill-exp" style="width: 80%;"></div></div>
                 </div>
             </div>
-        </header>
 
-        <!-- 2D BATTLE CANVAS / SCENE -->
-        <main class="relative w-full h-64 sm:h-72 rounded-lg border-4 border-slate-700 overflow-hidden shadow-2xl cursor-crosshair" id="battleStage" onclick="handleStageClick(event)">
-            <!-- Canvas Layer for Parallax Background & Visual Effects -->
-            <canvas id="bgCanvas" class="absolute inset-0 w-full h-full z-0"></canvas>
-
-            <!-- Route Banner Overlay -->
-            <div class="absolute top-2 left-2 z-10 bg-slate-900/80 border border-yellow-500/50 px-3 py-1 rounded text-xs sm:text-sm text-yellow-300 font-mono">
-                📍 <span id="routeTitle">Ruta 1 - Pueblo Paleta</span>
-            </div>
-
-            <!-- Enemy HP Bar Overlay GBA Style -->
-            <div class="absolute top-2 right-2 z-10 w-44 sm:w-56 bg-slate-900/90 border-2 border-slate-600 rounded-lg p-2 shadow-lg">
-                <div class="flex justify-between items-center text-xs text-white mb-1 pixel-font">
-                    <span id="enemyName" class="truncate max-w-[110px]">Pidgey</span>
-                    <span class="text-yellow-400" id="enemyLevel">Lv.1</span>
+            <div class="poke-card">
+                <div class="poke-avatar">🐱</div>
+                <div class="poke-details">
+                    <div class="poke-header"><span>MEOWTH</span> <span>Nv. 25</span></div>
+                    <div class="bar-bg"><div class="bar-fill-hp" style="width: 100%;"></div></div>
+                    <div class="bar-bg"><div class="bar-fill-exp" style="width: 20%;"></div></div>
                 </div>
-                <div class="w-full bg-slate-950 h-3.5 rounded-full border border-slate-700 p-0.5 relative overflow-hidden">
-                    <div id="enemyHpBar" class="bg-emerald-500 h-full rounded-full transition-all duration-100" style="width: 100%;"></div>
-                </div>
-                <div class="text-right text-[10px] text-gray-300 mt-0.5 font-mono" id="enemyHpText">10 / 10 HP</div>
             </div>
+        </div>
 
-            <!-- 2D CHARACTERS / SPRITES CONTAINER -->
-            <div class="absolute inset-0 z-10 flex justify-between items-end px-6 sm:px-12 pb-6 pointer-events-none">
-                
-                <!-- Trainer Sprite (Player Left) -->
-                <div class="relative flex flex-col items-center">
-                    <!-- Ground Platform -->
-                    <div class="w-24 sm:w-32 h-6 bg-emerald-800/60 rounded-[50%] border border-emerald-500/40 transform scale-y-50 absolute -bottom-2 z-0"></div>
-                    <!-- Trainer SVG Graphic -->
-                    <div id="playerSprite" class="relative z-10 w-20 h-24 sm:w-24 sm:h-28 transition-transform">
-                        <svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)]">
-                            <!-- Cap -->
-                            <path d="M 20 18 Q 32 10 44 18 Q 50 18 52 22 L 20 22 Z" fill="#ef4444" />
-                            <path d="M 38 18 Q 48 18 54 21 L 38 21 Z" fill="#ffffff" />
-                            <!-- Hair -->
-                            <path d="M 22 22 Q 18 30 22 34 L 42 34 Q 46 28 42 22 Z" fill="#78350f" />
-                            <!-- Face -->
-                            <rect x="24" y="24" width="16" height="12" fill="#fde047" rx="2" />
-                            <circle cx="36" cy="28" r="1.5" fill="#000" />
-                            <!-- Body/Jacket -->
-                            <path d="M 20 36 L 44 36 L 48 54 L 16 54 Z" fill="#2563eb" />
-                            <rect x="28" y="36" width="8" height="18" fill="#ffffff" />
-                            <!-- Pants -->
-                            <rect x="20" y="54" width="10" height="8" fill="#1e3a8a" />
-                            <rect x="34" y="54" width="10" height="8" fill="#1e3a8a" />
-                        </svg>
-                    </div>
-                </div>
-
-                <!-- Wild Pokémon Sprite (Enemy Right) -->
-                <div class="relative flex flex-col items-center">
-                    <!-- Ground Platform -->
-                    <div class="w-28 sm:w-36 h-7 bg-emerald-800/60 rounded-[50%] border border-emerald-500/40 transform scale-y-50 absolute -bottom-2 z-0"></div>
-                    <!-- Dynamic Pokemon Render -->
-                    <div id="enemySprite" class="relative z-10 w-24 h-24 sm:w-28 sm:h-28 animate-idle flex items-center justify-center transition-transform">
-                        <!-- SVG render injected via JavaScript -->
-                    </div>
-                </div>
-
+        <!-- Panel Derecho: Captura de Salvajes -->
+        <div class="right-panel">
+            <div class="panel-title">🎯 CAPTURA <span>⚽ 53</span></div>
+            <div id="captureList">
+                <!-- Se poblará dinámicamente con los salvajes cercanos -->
             </div>
-        </main>
+        </div>
 
-        <!-- BATTLE DIALOG / LOG BOX -->
-        <section class="mt-3">
-            <div class="retro-box p-3 text-xs sm:text-sm font-mono leading-tight h-16 overflow-y-auto flex flex-col-reverse" id="gameLog">
-                <p class="text-slate-800">¡Bienvenido a Jerimbia Idle! Haz clic en la pantalla o recluta Pokémon para atacar.</p>
-            </div>
-        </section>
-
-        <!-- POKÉMON TEAM SHOP / MANAGEMENT -->
-        <section class="mt-3 flex-1 flex flex-col">
-            <h2 class="pixel-font text-xs text-yellow-400 mb-2 flex items-center gap-1">
-                <span>🎒</span> MI EQUIPO POKÉMON (RECRUTAR Y EVOLUCIONAR)
-            </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1" id="shopContainer">
-                <!-- Shop items generated via JS -->
-            </div>
-        </section>
-
-        <!-- FOOTER CONTROLS -->
-        <footer class="mt-3 pt-2 border-t border-slate-700 flex gap-2">
-            <button onclick="changeRoute(1)" class="retro-btn flex-1 py-2 text-xs pixel-font flex items-center justify-center gap-1">
-                <span>⏩</span> AVANZAR RUTA
-            </button>
-            <button onclick="resetGame()" class="retro-btn bg-red-700 hover:bg-red-800 py-2 px-3 text-[10px] pixel-font">
-                RESET
-            </button>
-        </footer>
+        <!-- D-Pad para Dispositivos Móviles -->
+        <div class="dpad">
+            <div class="dpad-btn dpad-up" onclick="movePlayer(0, -1)">▲</div>
+            <div class="dpad-btn dpad-down" onclick="movePlayer(0, 1)">▼</div>
+            <div class="dpad-btn dpad-left" onclick="movePlayer(-1, 0)">◄</div>
+            <div class="dpad-btn dpad-right" onclick="movePlayer(1, 0)">►</div>
+        </div>
     </div>
 
-    <!-- AUDIO SYNTHESIZER (NO EXTERNAL DEPENDENCIES) -->
     <script>
-        // Web Audio API Sound Synthesizer
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        let audioCtx = null;
-        let soundEnabled = true;
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
 
-        function initAudio() {
-            if (!audioCtx) audioCtx = new AudioCtx();
+        // Configuración de pantalla
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
         }
+        window.addEventListener('resize', resize);
+        resize();
 
-        function toggleAudio() {
-            soundEnabled = !soundEnabled;
-            document.getElementById('soundToggle').innerText = soundEnabled ? '🔊 SOUND' : '🔇 MUTED';
-        }
+        // Variables Globales de Juego
+        const TILE_SIZE = 48;
+        let autoHelper = true;
 
-        function playSound(type) {
-            if (!soundEnabled) return;
-            initAudio();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-
-            const now = audioCtx.currentTime;
-
-            if (type === 'hit') {
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(180, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                osc.start(now);
-                osc.stop(now + 0.1);
-            } else if (type === 'buy') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(300, now);
-                osc.frequency.setValueAtTime(500, now + 0.08);
-                osc.frequency.setValueAtTime(750, now + 0.16);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-                osc.start(now);
-                osc.stop(now + 0.25);
-            } else if (type === 'faint') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(220, now);
-                osc.frequency.exponentialRampToValueAtTime(60, now + 0.3);
-                gain.gain.setValueAtTime(0.3, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-                osc.start(now);
-                osc.stop(now + 0.3);
-            }
-        }
-    </script>
-
-    <!-- MAIN GAME ENGINE SCRIPT -->
-    <script>
-        // --- GAME STATE ---
-        let state = {
-            gold: 0,
-            stage: 1,
-            clickPower: 1,
-            enemiesDefeated: 0,
-            team: {
-                pikachu: { name: "Pikachu", level: 0, baseDps: 2, cost: 15, evoLevel: 10, evoName: "Raichu", color: "#facc15", svg: 'electric' },
-                charmander: { name: "Charmander", level: 0, baseDps: 8, cost: 100, evoLevel: 15, evoName: "Charmeleon", color: "#f97316", svg: 'fire' },
-                bulbasaur: { name: "Bulbasaur", level: 0, baseDps: 30, cost: 600, evoLevel: 15, evoName: "Ivysaur", color: "#22c55e", svg: 'grass' },
-                squirtle: { name: "Squirtle", level: 0, baseDps: 120, cost: 3000, evoLevel: 15, evoName: "Wartortle", color: "#3b82f6", svg: 'water' },
-                gengar: { name: "Gengar", level: 0, baseDps: 500, cost: 15000, evoLevel: 20, evoName: "Mega Gengar", color: "#a855f7", svg: 'ghost' },
-                mewtwo: { name: "Mewtwo", level: 0, baseDps: 2500, cost: 90000, evoLevel: 25, evoName: "Armored Mewtwo", color: "#ec4899", svg: 'psychic' }
-            }
+        // Entrenador (Jugador)
+        const player = {
+            x: 10, y: 10,
+            targetX: 10, targetY: 10,
+            pixelX: 10 * TILE_SIZE, pixelY: 10 * TILE_SIZE,
+            speed: 3,
+            name: "Chuo02",
+            sprite: "🏃"
         };
 
-        // --- MAPS & ROUTES DATA ---
-        const routes = [
-            { id: 1, name: "Ruta 1 - Pueblo Paleta", bgTheme: "grass", mobs: [
-                { name: "Pidgey", color: "#d97706", type: "bird" },
-                { name: "Rattata", color: "#a855f7", type: "rat" },
-                { name: "Caterpie", color: "#22c55e", type: "bug" }
-            ]},
-            { id: 2, name: "Ruta 2 - Bosque Verde", bgTheme: "forest", mobs: [
-                { name: "Metapod", color: "#15803d", type: "bug" },
-                { name: "Pikachu", color: "#eab308", type: "electric" },
-                { name: "Pidgeotto", color: "#b45309", type: "bird" }
-            ]},
-            { id: 3, name: "Cueva Oscura", bgTheme: "cave", mobs: [
-                { name: "Zubat", color: "#6366f1", type: "bat" },
-                { name: "Geodude", color: "#78350f", type: "rock" },
-                { name: "Onix", color: "#64748b", type: "rock" }
-            ]},
-            { id: 4, name: "Calle Victoria", bgTheme: "volcano", mobs: [
-                { name: "Magmar", color: "#ef4444", type: "fire" },
-                { name: "Rhyhorn", color: "#475569", type: "rock" },
-                { name: "Charizard", color: "#f97316", type: "fire" }
-            ]}
+        // Mi Pokémon activo (Acompañante)
+        const pet = {
+            x: 9, y: 10,
+            pixelX: 9 * TILE_SIZE, pixelY: 10 * TILE_SIZE,
+            name: "Graveler",
+            emoji: "🪨",
+            target: null
+        };
+
+        // Arreglo de Pokémon Salvajes
+        let wildPokemons = [
+            { id: 1, name: "Meowth", level: 20, emoji: "🐱", x: 14, y: 8, pixelX: 14*48, pixelY: 8*48, hp: 100, maxHp: 100, dirX: 1, dirY: 0 },
+            { id: 2, name: "Meowth", level: 22, emoji: "🐱", x: 6, y: 14, pixelX: 6*48, pixelY: 14*48, hp: 100, maxHp: 100, dirX: 0, dirY: 1 },
+            { id: 3, name: "Pidgey", level: 15, emoji: "🐦", x: 16, y: 12, pixelX: 16*48, pixelY: 12*48, hp: 80, maxHp: 80, dirX: -1, dirY: 0 },
+            { id: 4, name: "Oddish", level: 12, emoji: "🌱", x: 8, y: 6, pixelX: 8*48, pixelY: 6*48, hp: 70, maxHp: 70, dirX: 0, dirY: -1 }
         ];
 
-        let currentEnemy = { name: "Pidgey", hp: 10, maxHp: 10, goldReward: 2, level: 1, color: "#d97706" };
+        // Partículas de Ataques y Texto FLotante
+        let effects = [];
 
-        // --- CANVAS PARALLAX BACKGROUND RENDERER ---
-        const canvas = document.getElementById("bgCanvas");
-        const ctx = canvas.getContext("2d");
-        let clouds = [ {x: 10, y: 20, speed: 0.2}, {x: 180, y: 35, speed: 0.35}, {x: 300, y: 15, speed: 0.15} ];
-
-        function resizeCanvas() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+        // Generador de Mapa de Azulejos (Grass, Water, Mountain, Trees)
+        const MAP_SIZE = 30;
+        const mapGrid = [];
+        for (let r = 0; r < MAP_SIZE; r++) {
+            mapGrid[r] = [];
+            for (let c = 0; c < MAP_SIZE; c++) {
+                if (c === 0 || r === 0 || c === MAP_SIZE - 1 || r === MAP_SIZE - 1) mapGrid[r][c] = "stone";
+                else if ((c === 5 || c === 6) && r < 12) mapGrid[r][c] = "stone"; // Montaña rocosa
+                else if (Math.random() < 0.12) mapGrid[r][c] = "tree"; // Árboles dispersos
+                else mapGrid[r][c] = "grass";
+            }
         }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
 
-        function renderBackground() {
-            const width = canvas.width;
-            const height = canvas.height;
-            const routeIndex = Math.floor((state.stage - 1) / 5) % routes.length;
-            const theme = routes[routeIndex].bgTheme;
+        // Bucle Principal de Renderizado y Física
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
 
-            ctx.clearRect(0, 0, width, height);
+        // Lógica de Movimiento y Combate
+        function update() {
+            // Suavizado de movimiento del Jugador
+            let targetPixelX = player.x * TILE_SIZE;
+            let targetPixelY = player.y * TILE_SIZE;
 
-            if (theme === "grass") {
-                // Sky
-                let skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.7);
-                skyGrad.addColorStop(0, "#38bdf8");
-                skyGrad.addColorStop(1, "#bae6fd");
-                ctx.fillStyle = skyGrad;
-                ctx.fillRect(0, 0, width, height * 0.7);
+            player.pixelX += (targetPixelX - player.pixelX) * 0.15;
+            player.pixelY += (targetPixelY - player.pixelY) * 0.15;
 
-                // Sun
-                ctx.fillStyle = "#fef08a";
-                ctx.beginPath();
-                ctx.arc(width - 50, 40, 24, 0, Math.PI * 2);
-                ctx.fill();
+            // Seguir al jugador con la mascota Pokémon
+            let petTargetX = (player.x - 1) * TILE_SIZE;
+            let petTargetY = player.y * TILE_SIZE;
+            pet.pixelX += (petTargetX - pet.pixelX) * 0.1;
+            pet.pixelY += (petTargetY - pet.pixelY) * 0.1;
 
-                // Animated Clouds
-                ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-                clouds.forEach(c => {
-                    c.x += c.speed;
-                    if (c.x > width + 40) c.x = -50;
-                    ctx.beginPath();
-                    ctx.arc(c.x, c.y, 14, 0, Math.PI * 2);
-                    ctx.arc(c.x + 12, c.y - 6, 18, 0, Math.PI * 2);
-                    ctx.arc(c.x + 28, c.y, 14, 0, Math.PI * 2);
-                    ctx.fill();
-                });
+            // Movimiento aleatorio para salvajes
+            wildPokemons.forEach(mob => {
+                if (Math.random() < 0.01) {
+                    mob.dirX = Math.floor(Math.random() * 3) - 1;
+                    mob.dirY = Math.floor(Math.random() * 3) - 1;
+                }
+                
+                mob.pixelX += mob.dirX * 0.4;
+                mob.pixelY += mob.dirY * 0.4;
+            });
 
-                // Mountains
-                ctx.fillStyle = "#475569";
-                ctx.beginPath();
-                ctx.moveTo(0, height * 0.7);
-                ctx.lineTo(width * 0.25, height * 0.35);
-                ctx.lineTo(width * 0.5, height * 0.7);
-                ctx.lineTo(width * 0.8, height * 0.4);
-                ctx.lineTo(width, height * 0.7);
-                ctx.fill();
+            // Lógica Auto-Helper (Ataque Automático estilo Idle)
+            if (autoHelper && wildPokemons.length > 0) {
+                let target = wildPokemons[0]; // Atacar al más cercano
+                
+                if (Math.random() < 0.05) { // Ratio de ataque
+                    target.hp -= 15;
+                    
+                    // Efecto visual de golpe
+                    effects.push({
+                        x: target.pixelX + 10,
+                        y: target.pixelY - 10,
+                        text: "-15",
+                        color: "#ef4444",
+                        life: 30
+                    });
 
-                // Ground
-                ctx.fillStyle = "#15803d";
-                ctx.fillRect(0, height * 0.68, width, height * 0.32);
+                    // Si muere el objetivo
+                    if (target.hp <= 0) {
+                        effects.push({
+                            x: target.pixelX,
+                            y: target.pixelY,
+                            text: "¡Derrotado!",
+                            color: "#facc15",
+                            life: 40
+                        });
+
+                        // Reaparecer en otra posición
+                        target.hp = target.maxHp;
+                        target.pixelX = (Math.floor(Math.random() * 15) + 5) * TILE_SIZE;
+                        target.pixelY = (Math.floor(Math.random() * 15) + 5) * TILE_SIZE;
+                    }
+                }
+            }
+
+            // Actualizar partículas
+            effects.forEach((eff, index) => {
+                eff.y -= 0.5;
+                eff.life--;
+                if (eff.life <= 0) effects.splice(index, 1);
+            });
+
+            updateUI();
+        }
+
+        // Dibujar Escena en 2D (Cámara centrada en el jugador)
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Calcular Offset de Cámara
+            let offsetX = canvas.width / 2 - player.pixelX - TILE_SIZE / 2;
+            let offsetY = canvas.height / 2 - player.pixelY - TILE_SIZE / 2;
+
+            // 1. Dibujar Terreno (Tiles)
+            for (let r = 0; r < MAP_SIZE; r++) {
+                for (let c = 0; c < MAP_SIZE; c++) {
+                    let drawX = c * TILE_SIZE + offsetX;
+                    let drawY = r * TILE_SIZE + offsetY;
+
+                    // Optimización: Solo renderizar lo visible en pantalla
+                    if (drawX > -TILE_SIZE && drawX < canvas.width && drawY > -TILE_SIZE && drawY < canvas.height) {
+                        if (mapGrid[r][c] === "grass") {
+                            ctx.fillStyle = (r + c) % 2 === 0 ? "#22c55e" : "#16a34a";
+                            ctx.fillRect(drawX, drawY, TILE_SIZE, TILE_SIZE);
+                        } else if (mapGrid[r][c] === "stone") {
+                            ctx.fillStyle = "#64748b";
+                            ctx.fillRect(drawX, drawY, TILE_SIZE, TILE_SIZE);
+                            ctx.strokeStyle = "#475569";
+                            ctx.strokeRect(drawX, drawY, TILE_SIZE, TILE_SIZE);
+                        } else if (mapGrid[r][c] === "tree") {
+                            ctx.fillStyle = "#15803d";
+                            ctx.fillRect(drawX, drawY, TILE_SIZE, TILE_SIZE);
+                            ctx.fillStyle = "#166534";
+                            ctx.beginPath();
+                            ctx.arc(drawX + 24, drawY + 24, 20, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            // 2. Dibujar Pokémon Salvajes
+            wildPokemons.forEach(mob => {
+                let drawX = mob.pixelX + offsetX;
+                let drawY = mob.pixelY + offsetY;
+
+                // Nombre sobre la cabeza estilo PokéTibia
+                ctx.font = "bold 11px Arial";
+                ctx.fillStyle = "#4ade80";
+                ctx.textAlign = "center";
+                ctx.fillText(mob.name, drawX + TILE_SIZE/2, drawY - 8);
+
+                // Barra de Vida
+                ctx.fillStyle = "rgba(0,0,0,0.6)";
+                ctx.fillRect(drawX + 4, drawY - 5, 40, 4);
                 ctx.fillStyle = "#22c55e";
-                ctx.fillRect(0, height * 0.68, width, 8);
+                ctx.fillRect(drawX + 4, drawY - 5, (mob.hp / mob.maxHp) * 40, 4);
 
-            } else if (theme === "forest") {
-                // Dark Green Forest Back
-                ctx.fillStyle = "#064e3b";
-                ctx.fillRect(0, 0, width, height);
-                ctx.fillStyle = "#022c22";
-                for (let i = 0; i < width; i += 40) {
-                    ctx.beginPath();
-                    ctx.moveTo(i, height);
-                    ctx.lineTo(i + 20, height * 0.2);
-                    ctx.lineTo(i + 40, height);
-                    ctx.fill();
+                // Sprite del Pokémon
+                ctx.font = "30px Arial";
+                ctx.fillText(mob.emoji, drawX + TILE_SIZE/2, drawY + TILE_SIZE - 8);
+            });
+
+            // 3. Dibujar Mascota Pokémon (Graveler)
+            let petX = pet.pixelX + offsetX;
+            let petY = pet.pixelY + offsetY;
+            ctx.font = "bold 11px Arial";
+            ctx.fillStyle = "#60a5fa";
+            ctx.textAlign = "center";
+            ctx.fillText(pet.name, petX + TILE_SIZE/2, petY - 8);
+            ctx.font = "30px Arial";
+            ctx.fillText(pet.emoji, petX + TILE_SIZE/2, petY + TILE_SIZE - 8);
+
+            // 4. Dibujar Jugador
+            let pX = player.pixelX + offsetX;
+            let pY = player.pixelY + offsetY;
+
+            ctx.font = "bold 12px Arial";
+            ctx.fillStyle = "#ffffff";
+            ctx.textAlign = "center";
+            ctx.fillText(player.name, pX + TILE_SIZE/2, pY - 10);
+
+            ctx.font = "32px Arial";
+            ctx.fillText(player.sprite, pX + TILE_SIZE/2, pY + TILE_SIZE - 6);
+
+            // 5. Dibujar Efectos y Daño Flotante
+            effects.forEach(eff => {
+                ctx.font = "bold 14px Arial";
+                ctx.fillStyle = eff.color;
+                ctx.fillText(eff.text, eff.x + offsetX, eff.y + offsetY);
+            });
+        }
+
+        // Mover jugador
+        function movePlayer(dx, dy) {
+            let newX = player.x + dx;
+            let newY = player.y + dy;
+
+            if (newX >= 1 && newX < MAP_SIZE - 1 && newY >= 1 && newY < MAP_SIZE - 1) {
+                if (mapGrid[newY][newX] !== "stone") {
+                    player.x = newX;
+                    player.y = newY;
                 }
-                ctx.fillStyle = "#14532d";
-                ctx.fillRect(0, height * 0.7, width, height * 0.3);
+            }
+        }
 
-            } else if (theme === "cave") {
-                // Dark Cave
-                ctx.fillStyle = "#1e1b4b";
-                ctx.fillRect(0, 0, width, height);
-                ctx.fillStyle = "#312e81";
-                // Stalactites
-                for (let i = 10; i < width; i += 50) {
-                    ctx.beginPath();
-                    ctx.moveTo(i, 0);
-                    ctx.lineTo(i + 15, height * 0.3);
-                    ctx.lineTo(i + 30, 0);
-                    ctx.fill();
-                }
-                ctx.fillStyle = "#0f172a";
-                ctx.fillRect(0, height * 0.7, width, height * 0.3);
+        // Eventos de Teclado (WASD / Flechas)
+        window.addEventListener("keydown", e => {
+            if (e.key === "ArrowUp" || e.key === "w") movePlayer(0, -1);
+            if (e.key === "ArrowDown" || e.key === "s") movePlayer(0, 1);
+            if (e.key === "ArrowLeft" || e.key === "a") movePlayer(-1, 0);
+            if (e.key === "ArrowRight" || e.key === "d") movePlayer(1, 0);
+        });
 
+        // Click en Pantalla para Moverse
+        canvas.addEventListener("click", e => {
+            let offsetX = canvas.width / 2 - player.pixelX - TILE_SIZE / 2;
+            let offsetY = canvas.height / 2 - player.pixelY - TILE_SIZE / 2;
+
+            let clickGridX = Math.floor((e.clientX - offsetX) / TILE_SIZE);
+            let clickGridY = Math.floor((e.clientY - offsetY) / TILE_SIZE);
+
+            if (clickGridX >= 1 && clickGridX < MAP_SIZE - 1 && clickGridY >= 1 && clickGridY < MAP_SIZE - 1) {
+                player.x = clickGridX;
+                player.y = clickGridY;
+            }
+        });
+
+        // Activar / Desactivar Auto Helper
+        function toggleAuto() {
+            autoHelper = !autoHelper;
+            const btn = document.getElementById("autoBtn");
+            if (autoHelper) {
+                btn.classList.add("active");
+                btn.innerText = "⚙️ Auto-Helper: ON";
             } else {
-                // Volcano / Victory Road
-                ctx.fillStyle = "#450a0a";
-                ctx.fillRect(0, 0, width, height);
-                ctx.fillStyle = "#dc2626";
-                ctx.fillRect(0, height * 0.75, width, height * 0.25);
-                ctx.fillStyle = "#7f1d1d";
-                ctx.fillRect(0, height * 0.68, width, height * 0.07);
-            }
-
-            requestAnimationFrame(renderBackground);
-        }
-
-        // --- POKEMON VECTOR SPRITE GENERATOR ---
-        function getPokemonSvg(type, color) {
-            return `
-            <svg viewBox="0 0 64 64" class="w-full h-full drop-shadow-[0_5px_5px_rgba(0,0,0,0.6)]">
-                <!-- Shadow Base -->
-                <ellipse cx="32" cy="56" rx="20" ry="5" fill="rgba(0,0,0,0.3)" />
-                <!-- Body -->
-                <circle cx="32" cy="36" r="18" fill="${color}" />
-                <!-- Head/Ears -->
-                <circle cx="20" cy="18" r="6" fill="${color}" />
-                <circle cx="44" cy="18" r="6" fill="${color}" />
-                <!-- Eyes -->
-                <circle cx="26" cy="32" r="3" fill="#ffffff" />
-                <circle cx="26" cy="32" r="1.5" fill="#000000" />
-                <circle cx="38" cy="32" r="3" fill="#ffffff" />
-                <circle cx="38" cy="32" r="1.5" fill="#000000" />
-                <!-- Cheeks/Details -->
-                <circle cx="21" cy="38" r="2.5" fill="#ef4444" opacity="0.8" />
-                <circle cx="43" cy="38" r="2.5" fill="#ef4444" opacity="0.8" />
-                <!-- Mouth -->
-                <path d="M 28 42 Q 32 46 36 42" stroke="#000000" stroke-width="2" fill="none" />
-            </svg>`;
-        }
-
-        // --- GAME LOGIC & COMBAT SYSTEM ---
-
-        function getDps() {
-            let total = 0;
-            for (let key in state.team) {
-                let p = state.team[key];
-                let multiplier = p.level >= p.evoLevel ? 2.5 : 1;
-                total += p.level * p.baseDps * multiplier;
-            }
-            return total;
-        }
-
-        function updateEnemy() {
-            const routeIndex = Math.floor((state.stage - 1) / 5) % routes.length;
-            const currentRoute = routes[routeIndex];
-            const randomMob = currentRoute.mobs[Math.floor(Math.random() * currentRoute.mobs.length)];
-
-            // Boss every 5 stages
-            const isBoss = state.stage % 5 === 0;
-            const hpScale = Math.pow(1.3, state.stage - 1);
-            
-            currentEnemy.name = (isBoss ? "👑 BOSS " : "") + randomMob.name;
-            currentEnemy.level = state.stage;
-            currentEnemy.maxHp = Math.round((isBoss ? 25 : 12) * hpScale);
-            currentEnemy.hp = currentEnemy.maxHp;
-            currentEnemy.goldReward = Math.round((isBoss ? 15 : 5) * state.stage * Math.pow(1.15, state.stage - 1));
-            currentEnemy.color = randomMob.color;
-
-            // Update UI elements
-            document.getElementById("routeTitle").innerText = currentRoute.name;
-            document.getElementById("enemyName").innerText = currentEnemy.name;
-            document.getElementById("enemyLevel").innerText = `Lv.${currentEnemy.level}`;
-            document.getElementById("enemySprite").innerHTML = getPokemonSvg(randomMob.type, randomMob.color);
-
-            updateHpBar();
-        }
-
-        function updateHpBar() {
-            const pct = Math.max(0, (currentEnemy.hp / currentEnemy.maxHp) * 100);
-            const bar = document.getElementById("enemyHpBar");
-            bar.style.width = pct + "%";
-            document.getElementById("enemyHpText").innerText = `${Math.ceil(currentEnemy.hp)} / ${currentEnemy.maxHp} HP`;
-
-            // Color status
-            if (pct > 50) {
-                bar.className = "bg-emerald-500 h-full rounded-full transition-all duration-100";
-            } else if (pct > 20) {
-                bar.className = "bg-yellow-500 h-full rounded-full transition-all duration-100";
-            } else {
-                bar.className = "bg-red-500 h-full rounded-full transition-all duration-100";
+                btn.classList.remove("active");
+                btn.innerText = "⚙️ Auto-Helper: OFF";
             }
         }
 
-        function damageEnemy(amount, isClick = false) {
-            currentEnemy.hp -= amount;
-
-            // Visual Animations
-            const enemySprite = document.getElementById("enemySprite");
-            enemySprite.classList.add("animate-hurt");
-            setTimeout(() => enemySprite.classList.remove("animate-hurt"), 300);
-
-            if (isClick) {
-                const playerSprite = document.getElementById("playerSprite");
-                playerSprite.classList.add("animate-attack");
-                setTimeout(() => playerSprite.classList.remove("animate-attack"), 250);
-                playSound('hit');
-            }
-
-            if (currentEnemy.hp <= 0) {
-                currentEnemy.hp = 0;
-                state.gold += currentEnemy.goldReward;
-                state.enemiesDefeated++;
-                playSound('faint');
-                logMsg(`¡Derrotaste a <span class="text-yellow-600 font-bold">${currentEnemy.name}</span>! Ganaste +¥${currentEnemy.goldReward}`);
-                updateEnemy();
-            }
-
-            updateHpBar();
-            updateUI();
-        }
-
-        function handleStageClick(e) {
-            // Spawn floating damage text
-            const rect = document.getElementById("battleStage").getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-
-            const popup = document.createElement("div");
-            popup.className = "damage-popup text-yellow-300 text-sm sm:text-base";
-            popup.style.left = (x - 10) + "px";
-            popup.style.top = (y - 20) + "px";
-            popup.innerText = `-${state.clickPower}`;
-            document.getElementById("battleStage").appendChild(popup);
-
-            setTimeout(() => popup.remove(), 800);
-
-            damageEnemy(state.clickPower, true);
-        }
-
-        function buyPokemon(key) {
-            let p = state.team[key];
-            if (state.gold >= p.cost) {
-                state.gold -= p.cost;
-                p.level++;
-                p.cost = Math.round(p.cost * 1.25);
-                playSound('buy');
-
-                // Evolution check
-                if (p.level === p.evoLevel) {
-                    logMsg(`🌟 ¡Tu ${p.name} ha evolucionado a <span class="text-purple-600 font-bold">${p.evoName}</span>! Su daño aumentó masivamente.`);
-                } else {
-                    logMsg(`¡Subiste de nivel a ${p.level >= p.evoLevel ? p.evoName : p.name} (Lv.${p.level})!`);
-                }
-
-                updateUI();
-                renderShop();
-            }
-        }
-
-        function changeRoute(delta) {
-            state.stage = Math.max(1, state.stage + delta);
-            logMsg(` Has viajado a la Ruta / Etapa ${state.stage}`);
-            updateEnemy();
-            updateUI();
-        }
-
-        function logMsg(msg) {
-            const log = document.getElementById("gameLog");
-            log.innerHTML = `<p class="mb-1 border-b border-slate-300/50 pb-0.5">> ${msg}</p>` + log.innerHTML;
-        }
-
-        function renderShop() {
-            const container = document.getElementById("shopContainer");
-            container.innerHTML = "";
-
-            for (let key in state.team) {
-                let p = state.team[key];
-                let isEvolved = p.level >= p.evoLevel;
-                let displayName = isEvolved ? p.evoName : p.name;
-                let currentDps = p.level * p.baseDps * (isEvolved ? 2.5 : 1);
-                let canAfford = state.gold >= p.cost;
-
-                container.innerHTML += `
-                    <div class="bg-slate-800 border-2 border-slate-600 p-2 rounded flex items-center justify-between gap-2 shadow">
-                        <div class="flex items-center gap-2">
-                            <div class="w-10 h-10 rounded border border-slate-500 flex items-center justify-center p-1" style="background:${p.color}">
-                                ${getPokemonSvg(p.svg, '#ffffff')}
-                            </div>
-                            <div class="flex flex-col text-xs font-mono">
-                                <span class="font-bold ${isEvolved ? 'text-purple-400' : 'text-white'}">${displayName}</span>
-                                <span class="text-gray-400">Nivel: ${p.level} ${isEvolved ? '🌟' : ''}</span>
-                                <span class="text-red-400">+${currentDps} DPS</span>
-                            </div>
-                        </div>
-                        <button onclick="buyPokemon('${key}')" ${!canAfford ? 'disabled' : ''} class="retro-btn text-[10px] pixel-font py-1.5 px-2">
-                            MEJORAR<br><span class="text-yellow-300">¥${p.cost}</span>
-                        </button>
+        // Actualizar UI lateral de capturas
+        function updateUI() {
+            const list = document.getElementById("captureList");
+            list.innerHTML = "";
+            wildPokemons.slice(0, 3).forEach(mob => {
+                list.innerHTML += `
+                    <div class="capture-item">
+                        <span>${mob.emoji} ${mob.name} (Lv.${mob.level})</span>
+                        <button class="btn-action" onclick="catchPokemon(${mob.id})">Lanzar</button>
                     </div>
                 `;
-            }
+            });
         }
 
-        function updateUI() {
-            document.getElementById("gold").innerText = `¥${state.gold}`;
-            document.getElementById("dps").innerText = getDps();
-            document.getElementById("stage").innerText = state.stage;
-            renderShop();
+        function catchPokemon(id) {
+            alert("¡Lanzaste una Pokéball!");
         }
 
-        function resetGame() {
-            if (confirm("¿Estás seguro de que deseas reiniciar toda tu partida de Pokémon Idle?")) {
-                localStorage.removeItem("jerimbia_pokemon_save");
-                location.reload();
-            }
-        }
-
-        // --- GAME LOOP & SAVING ---
-
-        // Idle Game Loop (10 ticks per second)
-        setInterval(() => {
-            let dps = getDps();
-            if (dps > 0) {
-                damageEnemy(dps / 10, false);
-            }
-        }, 100);
-
-        // Auto Save to LocalStorage
-        setInterval(() => {
-            localStorage.setItem("jerimbia_pokemon_save", JSON.stringify(state));
-            const status = document.getElementById("saveStatus");
-            status.style.opacity = '1';
-            setTimeout(() => status.style.opacity = '0.3', 1000);
-        }, 10000);
-
-        // Load Game on Startup
-        window.onload = function() {
-            renderBackground();
-            const saved = localStorage.getItem("jerimbia_pokemon_save");
-            if (saved) {
-                try {
-                    let loaded = JSON.parse(saved);
-                    state = Object.assign({}, state, loaded);
-                    logMsg("¡Partida recuperada con éxito!");
-                } catch(e) {
-                    console.error("Error al cargar la partida", e);
-                }
-            }
-            updateEnemy();
-            updateUI();
-        };
+        // Iniciar Juego
+        requestAnimationFrame(gameLoop);
     </script>
 </body>
 </html>
-```
