@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Idle Adventure</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0f172a; color: #f8fafc; display: flex; flex-direction: column; min-height: 100vh; align-items: center; padding: 10px; }
+        header { text-align: center; margin-bottom: 15px; width: 100%; max-width: 600px; }
+        h1 { color: #facc15; font-size: 1.8rem; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .stats-bar { display: flex; justify-content: space-around; background: #1e293b; padding: 10px; border-radius: 8px; margin-top: 8px; font-size: 0.95rem; border: 1px solid #334155; }
+        .game-container { width: 100%; max-width: 600px; background: #1e293b; border-radius: 12px; padding: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); border: 1px solid #334155; display: flex; flex-direction: column; gap: 15px; }
+        
+        /* Área de Combate */
+        .battle-arena { background: linear-gradient(to bottom, #3b82f6, #1d4ed8); border-radius: 8px; padding: 20px; text-align: center; position: relative; overflow: hidden; border: 2px solid #60a5fa; }
+        .map-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: #bfdbfe; margin-bottom: 5px; }
+        .enemy-box { margin: 15px 0; }
+        .enemy-sprite { font-size: 4rem; animation: float 2s ease-in-out infinite; cursor: pointer; display: inline-block; user-select: none; }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        .enemy-name { font-weight: bold; font-size: 1.2rem; margin-bottom: 5px; color: #ffffff; }
+        
+        /* Barras de vida */
+        .hp-container { background: rgba(0,0,0,0.4); border-radius: 10px; height: 16px; width: 80%; margin: 0 auto; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); }
+        .hp-bar { background: #22c55e; height: 100%; width: 100%; transition: width 0.1s linear; }
+        .hp-text { font-size: 0.75rem; margin-top: 3px; color: #e2e8f0; }
+
+        /* Controles y Tienda */
+        .section-title { font-size: 1.1rem; color: #facc15; border-bottom: 1px solid #334155; padding-bottom: 4px; margin-bottom: 8px; }
+        .shop-list, .team-list { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 4px; }
+        
+        button { background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        button:hover { background: #2563eb; }
+        button:disabled { background: #475569; color: #94a3b8; cursor: not-allowed; }
+        
+        .log-box { background: #0f172a; border-radius: 6px; padding: 8px; font-size: 0.8rem; height: 60px; overflow-y: auto; color: #94a3b8; border: 1px solid #334155; }
+        
+        /* Scrollbars */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚡ Pokémon Idle Adventure</h1>
+        <div class="stats-bar">
+            <div>💰 PokéDólares: <span id="gold">0</span></div>
+            <div>⚔️ DPS: <span id="dps">0</span></div>
+            <div>🗺️ Ruta: <span id="stage">1</span></div>
+        </div>
+    </header>
+
+    <div class="game-container">
+        <!-- Zona de Batalla -->
+        <div class="battle-arena">
+            <div class="map-title" id="mapName">Ruta 1: Pueblo Paleta</div>
+            <div class="enemy-box">
+                <div class="enemy-name" id="enemyName">Pidgey Salvaje (Lv. 1)</div>
+                <div class="enemy-sprite" id="enemySprite" onclick="clickDamage()">🐦</div>
+                <div class="hp-container">
+                    <div class="hp-bar" id="enemyHpBar"></div>
+                </div>
+                <div class="hp-text" id="enemyHpText">10 / 10</div>
+            </div>
+            <div style="font-size: 0.75rem; color: #bfdbfe;">¡Haz clic en el Pokémon para atacarlo manualmente!</div>
+        </div>
+
+        <!-- Registro de Combate -->
+        <div>
+            <div class="section-title">📜 Registro de Aventuras</div>
+            <div class="log-box" id="logBox">¡Comienza tu viaje Pokémon! Derrota enemigos para ganar dinero y reclutar equipo.</div>
+        </div>
+
+        <!-- Tienda de Equipo / Compañeros -->
+        <div>
+            <div class="section-title">👥 Equipo de Pokémon (DPS Pasivo)</div>
+            <div class="shop-list" id="shopList"></div>
+        </div>
+
+        <!-- Botones de Progreso -->
+        <button onclick="advanceStage()" style="background: #16a34a; justify-content: center;">🚀 Avanzar de Ruta / Siguiente Nivel</button>
+    </div>
+
+    <script>
+        // Estado del juego
+        let game = {
+            gold: 0,
+            stage: 1,
+            enemiesDefeated: 0,
+            currentEnemyMaxHp: 10,
+            currentEnemyHp: 10,
+            clickPower: 1,
+            heroes: {
+                pikachu: { name: "Pikachu", emoji: "⚡", dps: 2, cost: 15, count: 0, costMultiplier: 1.15 },
+                bulbasaur: { name: "Bulbasaur", emoji: "🌱", dps: 10, cost: 100, count: 0, costMultiplier: 1.2 },
+                charmander: { name: "Charmander", emoji: "🔥", dps: 45, cost: 500, count: 0, costMultiplier: 1.22 },
+                squirtle: { name: "Squirtle", emoji: "💧", dps: 200, cost: 2500, count: 0, costMultiplier: 1.25 },
+                mewtwo: { name: "Mewtwo", emoji: "🔮", dps: 1200, cost: 15000, count: 0, costMultiplier: 1.3 }
+            }
+        };
+
+        const maps = [
+            { name: "Ruta 1: Pradera Serena", enemies: [{name: "Pidgey", emoji: "🐦"}, {name: "Rattata", emoji: "🐀"}, {name: "Caterpie", emoji: "🐛"}] },
+            { name: "Ruta 2: Bosque Verde", enemies: [{name: "Metapod", emoji: "🍃"}, {name: "Weedle", emoji: "🐛"}, {name: "Pikachu", emoji: "⚡"}] },
+            { name: "Cueva Plateada", enemies: [{name: "Zubat", emoji: "🦇"}, {name: "Geodude", emoji: "🪨"}, {name: "Onix", emoji: "🐍"}] },
+            { name: "Monte Ígneo", enemies: [{name: "Charmander", emoji: "🔥"}, {name: "Vulpix", emoji: "🦊"}, {name: "Magmar", emoji: "🌋"}] }
+        ];
+
+        let currentEnemy = { name: "Pidgey", emoji: "🐦", maxHp: 10, hp: 10, goldReward: 3 };
+
+        function updateEnemy() {
+            let mapIndex = Math.floor((game.stage - 1) / 5) % maps.length;
+            let currentMap = maps[mapIndex];
+            let randomMob = currentMap.enemies[Math.floor(Math.random() * currentMap.enemies.length)];
+            
+            let hpMultiplier = Math.pow(1.35, game.stage - 1);
+            let baseHp = 10 * hpMultiplier;
+            
+            currentEnemy.name = `${randomMob.name} Salvaje (Lv. ${game.stage})`;
+            currentEnemy.emoji = randomMob.emoji;
+            currentEnemy.maxHp = Math.round(baseHp);
+            currentEnemy.hp = currentEnemy.maxHp;
+            currentEnemy.goldReward = Math.round(2 * game.stage * Math.pow(1.1, game.stage - 1));
+
+            document.getElementById("mapName").innerText = currentMap.name;
+            document.getElementById("enemyName").innerText = currentEnemy.name;
+            document.getElementById("enemySprite").innerText = currentEnemy.emoji;
+            document.getElementById("stage").innerText = game.stage;
+        }
+
+        function clickDamage() {
+            damageEnemy(game.clickPower);
+        }
+
+        function damageEnemy(amount) {
+            currentEnemy.hp -= amount;
+            if (currentEnemy.hp <= 0) {
+                currentEnemy.hp = 0;
+                game.gold += currentEnemy.goldReward;
+                game.enemiesDefeated++;
+                log(`¡Derrotaste a ${currentEnemy.name}! Ganaste 💰${currentEnemy.goldReward}`);
+                updateEnemy();
+            }
+            updateDisplay();
+        }
+
+        function getTotalDps() {
+            let total = 0;
+            for (let key in game.heroes) {
+                total += game.heroes[key].dps * game.heroes[key].count;
+            }
+            return total;
+        }
+
+        function buyHero(heroKey) {
+            let hero = game.heroes[heroKey];
+            if (game.gold >= hero.cost) {
+                game.gold -= hero.cost;
+                hero.count++;
+                hero.cost = Math.round(hero.cost * hero.costMultiplier);
+                log(`¡Contrataste a ${hero.name}! Tu DPS aumenta.`);
+                updateDisplay();
+                renderShop();
+            }
+        }
+
+        function advanceStage() {
+            game.stage++;
+            log(`¡Avanzaste a la Ruta/Nivel ${game.stage}! Los enemigos son más fuertes.`);
+            updateEnemy();
+            updateDisplay();
+        }
+
+        function log(message) {
+            let box = document.getElementById("logBox");
+            box.innerHTML = `> ${message}<br>` + box.innerHTML;
+        }
+
+        function renderShop() {
+            let shopList = document.getElementById("shopList");
+            shopList.innerHTML = "";
+            for (let key in game.heroes) {
+                let hero = game.heroes[key];
+                let canBuy = game.gold >= hero.cost;
+                shopList.innerHTML += `
+                    <button onclick="buyHero('${key}')" ${!canBuy ? 'disabled' : ''}>
+                        <span>${hero.emoji} ${hero.name} (x${hero.count}) [+${hero.dps} DPS]</span>
+                        <span>💰 ${hero.cost}</span>
+                    </button>
+                `;
+            }
+        }
+
+        function updateDisplay() {
+            document.getElementById("gold").innerText = game.gold;
+            document.getElementById("dps").innerText = getTotalDps();
+            
+            let hpPercent = (currentEnemy.hp / currentEnemy.maxHp) * 100;
+            document.getElementById("enemyHpBar").style.width = Math.max(0, hpPercent) + "%";
+            document.getElementById("enemyHpText").innerText = `${Math.ceil(currentEnemy.hp)} / ${currentEnemy.maxHp}`;
+            
+            renderShop();
+        }
+
+        // Bucle Principal del juego (Actualización por segundo / Idle tick)
+        setInterval(() => {
+            let dps = getTotalDps();
+            if (dps > 0) {
+                damageEnemy(dps / 10); // Se ejecuta 10 veces por segundo para fluidez
+            }
+        }, 100);
+
+        // Guardado automático cada 30 segundos
+        setInterval(() => {
+            localStorage.setItem('pokemonIdleSave', JSON.stringify(game));
+        }, 30000);
+
+        // Cargar partida guardada si existe
+        window.onload = function() {
+            let savedGame = localStorage.getItem('pokemonIdleSave');
+            if (savedGame) {
+                let loaded = JSON.parse(savedGame);
+                game = Object.assign({}, game, loaded);
+                log("¡Partida cargada exitosamente desde el almacenamiento local!");
+            }
+            updateEnemy();
+            updateDisplay();
+        };
+    </script>
+</body>
+</html>
